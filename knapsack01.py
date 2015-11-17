@@ -82,6 +82,7 @@ def branchbound(capacity, items, sort_fn=None):
 			else:
 				self.value  = 0
 				self.weight = 0
+			self.best_guess = relaxation(items[:], self)
 	
 	def find(items, n):
 		items2 = sorted(items, key=lambda item: item.index)
@@ -95,12 +96,12 @@ def branchbound(capacity, items, sort_fn=None):
 		for j in range(len(items)):
 			if items[j].index < len(node.state):
 				continue
-			if items[j].weight <= rest_cap:
+			elif items[j].weight <= rest_cap:
 				value += items[j].value
 				weight += items[j].weight
 				rest_cap -= items[j].weight
 			elif items[j].weight > rest_cap:
-				value += items[j].value * rest_cap/items[j].weight
+				value += items[j].value * float(rest_cap)/items[j].weight
 				break
 		return value
 	
@@ -110,7 +111,7 @@ def branchbound(capacity, items, sort_fn=None):
 	def best_first(node):
 		return -relaxation(items, node)
 	
-	items.sort(key = lambda item: item.value/item.weight)
+	items.sort(key = lambda item: item.value/item.weight, reverse=True)
 	initial = Node(parent=None, state=[])
 	queue = [initial]
 	best_node, best_value = None, 0
@@ -118,16 +119,35 @@ def branchbound(capacity, items, sort_fn=None):
 		if sort_fn == 'best_first':
 			queue.sort(key = best_first)
 		node = queue.pop()
-		for successor in [0,1]:
-			next_node = Node(parent=node, state=node.state + [successor])
-			if next_node.weight < capacity:
-				if terminal(next_node):
-					if next_node.value > best_value:
-						best_node = next_node
-						best_value = next_node.value
-				elif relaxation(items, next_node) > best_value:
-					queue.append(next_node)			
+		print 'len(queue) =', len(queue), node.best_guess,
+		if best_node: print  best_node.value
+		else: print
+		#print node.state, node.value, node.best_guess, node.weight
+		if terminal(node):
+			if node.value > best_value:
+				best_node = node
+				best_value = node.value
+				#print 'Best:', best_value, best_node.state
+		else:
+			for successor in [0, 1]:
+				next_node = Node(parent=node, state=node.state + [successor])
+				if next_node.weight < capacity:
+					if next_node.best_guess > best_value:
+						queue.append(next_node)			
 	return best_node.value, best_node.state		
+	#return relaxation, best_node
+
+def find(items, n):
+		items2 = sorted(items, key=lambda item: item.index)
+		return items2[n]
+		
+def calc_val(node, items):
+	val = 0
+	for i in range(len(node.state)):
+		if node.state[i] == 1:
+			item = find(items, i)
+			val += item.value
+	return val
 			
 			
 import sys
@@ -141,7 +161,9 @@ if __name__ == '__main__':
 	value,  taken = greedy(capacity, items[:])
 	print value, taken
 	
-	value, taken = branchbound(capacity, items[:], sort_fn='best_first')
+	value, taken = branchbound(capacity, items[:], sort_fn=None)
 	print value, taken
+	#relaxation, node = branchbound(capacity, items[:], sort_fn='best_first')
+	#print relaxation(items, node), node.value
 	
 	
